@@ -19,6 +19,7 @@ router.get('/user/profile', userController.getProfile);
 router.post('/admin/courses', requireRole(['admin']), adminController.createCourse);
 router.post('/admin/languages', requireRole(['admin']), adminController.createLanguage);
 router.post('/admin/questions', requireRole(['admin']), adminController.createQuestion);
+router.get('/admin/exams/report', requireRole(['admin']), adminController.getExamReport);
 router.post('/exam/start', examController.startExam);
 router.post('/exam/submit', examController.submitExam);
 router.post('/exam/anti-cheat', examController.reportCheat);

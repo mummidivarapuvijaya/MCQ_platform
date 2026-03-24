@@ -42,5 +42,10 @@ async function createQuestion(req, res) {
   return res.status(201).json(result);
 }
 
-module.exports = { createCourse, createLanguage, createQuestion };
+async function getExamReport(_req, res) {
+  const result = await adminService.getExamReport();
+  return res.json(result);
+}
+
+module.exports = { createCourse, createLanguage, createQuestion, getExamReport };
 

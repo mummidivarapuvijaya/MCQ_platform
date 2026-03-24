@@ -1,9 +1,14 @@
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
 const { User, Otp, Course } = require('../models');
 const { signToken } = require('../auth');
 const { getTransport } = require('../mailer');
+
+function hasEmailConfig() {
+  const hasHostConfig = process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS;
+  const hasServiceConfig = process.env.EMAIL_SERVICE && process.env.EMAIL_USER && process.env.EMAIL_PASS;
+  return Boolean(hasHostConfig || hasServiceConfig);
+}
 
 async function register(data) {
   const { name, email, password, role, education, courseId, courseCode, termsAccepted } = data;
@@ -37,19 +42,29 @@ async function sendOtp({ email }) {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
   await Otp.findOneAndUpdate({ email }, { email, code, expiresAt, verified: false }, { upsert: true, new: true });
-  const transport = await getTransport();
-  const info = await transport.sendMail({
-    from: 'no-reply@mcq.local',
-    to: email,
-    subject: 'Your OTP',
-    text: `OTP: ${code}`
-  });
-  const previewUrl = nodemailer.getTestMessageUrl(info) || null;
+  if (hasEmailConfig()) {
+    const transport = await getTransport();
+    const info = await transport.sendMail({
+      from: process.env.MAIL_FROM || process.env.EMAIL_USER || 'no-reply@mcq.local',
+      to: email,
+      subject: 'Your OTP',
+      text: `OTP: ${code}`
+    });
+    return {
+      sent: true,
+      messageId: info.messageId,
+      otp: process.env.NODE_ENV === 'production' ? undefined : code
+    };
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return { error: { code: 500, message: 'SMTP not configured in production' } };
+  }
+
   return {
     sent: true,
-    messageId: info.messageId,
-    previewUrl,
-    otp: process.env.NODE_ENV === 'production' ? undefined : code
+    message: 'SMTP not configured. OTP returned in response for local development.',
+    otp: code
   };
 }
 
